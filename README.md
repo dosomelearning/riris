@@ -39,3 +39,4 @@ The architecture emphasizes:
 
 Future work will expand each component toward a production-ready platform capable of handling high-volume, controlled data sharing scenarios.
 
+.
