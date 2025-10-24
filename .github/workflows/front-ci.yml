@@ -12,6 +12,7 @@ on:
 
 jobs:
   build-and-test:
+    if: ${{ hashFiles('front/package.json') != '' }}
     runs-on: ubuntu-latest
     defaults:
       run:
