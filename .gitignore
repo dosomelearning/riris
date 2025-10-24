@@ -1,0 +1,61 @@
+# --- OS cruft ---
+.DS_Store
+Thumbs.db
+
+# --- IDEs ---
+.idea/
+.vscode/
+*.iml
+
+# --- Node/Frontend ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tsbuildinfo
+# Vite/CRA builds (adjust if your front build dir differs)
+front/dist/
+front/build/
+
+# --- Python/Backend ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.eggs/
+.eggs/*
+*.egg-info/
+dist/
+build/
+# virtual envs
+.venv/
+venv/
+env/
+
+# --- AWS SAM (backend) ---
+.aws-sam/
+# Optional local package/bundle artifacts
+.back-packaged/
+package.out/
+#samconfig.toml
+
+# --- Env & secrets (keep out of git) ---
+.env
+.env.*
+*.local
+
+# --- Logs & temp ---
+*.log
+logs/
+tmp/
+temp/
+
+# --- Editor/OS backups ---
+*~
+*.swp
+*.swo
