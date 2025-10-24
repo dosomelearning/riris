@@ -1,0 +1,19 @@
+name: Reject PRs From Forks
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  close-fork-pr:
+    # Only run when the PR originates from a forked repository
+    if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Close PR
+        run: |
+          gh pr close "${{ github.event.pull_request.number }}" --comment "This repository does not accept pull requests from forks."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
