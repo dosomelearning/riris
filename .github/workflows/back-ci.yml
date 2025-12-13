@@ -30,7 +30,7 @@ jobs:
           set -euxo pipefail
           python -m pip install --upgrade pip
       
-          echo "Installing Lambda runtime requirements found under src/**/requirements.txt"
+          echo "Installing runtime (per-Lambda) requirements from src/**/requirements.txt"
           found=0
           while IFS= read -r req; do
             found=1
@@ -39,15 +39,13 @@ jobs:
           done < <(find src -type f -name "requirements.txt" -print)
       
           if [ "$found" -eq 0 ]; then
-            echo "No per-Lambda requirements.txt found under src/. (Unexpected)"
+            echo "ERROR: No runtime requirements.txt found under src/"
+            exit 1
           fi
       
-          if [ -f requirements-dev.txt ]; then
-            echo "Installing dev requirements-dev.txt"
-            pip install -r requirements-dev.txt
-          else
-            echo "Missing back/requirements-dev.txt (recommended to add)."
-          fi
+          echo "Installing unit test requirements from tests/unit/requirements.txt"
+          test -f tests/unit/requirements.txt
+          pip install -r tests/unit/requirements.txt
       
           python -c "import boto3; print('boto3 ok')"
           python -c "import dateutil; print('dateutil ok')"
