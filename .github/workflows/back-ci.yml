@@ -52,4 +52,4 @@ jobs:
           python -c "import pytest; print('pytest ok')"
 
       - name: Unit tests
-        run: pytest -q
+        run: pytest
