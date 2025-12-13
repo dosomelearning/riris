@@ -12,7 +12,6 @@ on:
 
 jobs:
   build-and-test:
-    if: ${{ hashFiles('front/package.json') != '' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -20,6 +19,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Skip if frontend not initialized
+        run: |
+          if [ ! -f package.json ]; then
+            echo "front/package.json not found; skipping Front CI."
+            exit 0
+          fi
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -33,7 +39,7 @@ jobs:
 
       - name: Lint
         run: |
-          if [ -f package.json ] && jq -e '.scripts.lint' package.json > /dev/null; then
+          if jq -e '.scripts.lint' package.json > /dev/null; then
             npm run lint
           else
             echo "No lint script; skipping."
@@ -41,15 +47,15 @@ jobs:
 
       - name: Test
         run: |
-          if [ -f package.json ] && jq -e '.scripts.test' package.json > /dev/null; then
-            npm test -- --ci --watch=false
+          if jq -e '.scripts.test' package.json > /dev/null; then
+            npm test 
           else
             echo "No test script; skipping."
           fi
 
       - name: Build
         run: |
-          if [ -f package.json ] && jq -e '.scripts.build' package.json > /dev/null; then
+          if jq -e '.scripts.build' package.json > /dev/null; then
             npm run build
           else
             echo "No build script; skipping."
