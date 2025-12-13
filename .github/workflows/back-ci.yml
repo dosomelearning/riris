@@ -44,7 +44,7 @@ jobs:
           fi
       
           echo "Installing unit test requirements from tests/unit/requirements.txt"
-          test -f tests/unit/requirements.txt
+          test -f tests/requirements.txt
           pip install -r tests/unit/requirements.txt
       
           python -c "import boto3; print('boto3 ok')"
