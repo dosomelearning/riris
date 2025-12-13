@@ -45,7 +45,7 @@ jobs:
       
           echo "Installing unit test requirements from tests/unit/requirements.txt"
           test -f tests/requirements.txt
-          pip install -r tests/unit/requirements.txt
+          pip install -r tests/requirements.txt
       
           python -c "import boto3; print('boto3 ok')"
           python -c "import dateutil; print('dateutil ok')"
