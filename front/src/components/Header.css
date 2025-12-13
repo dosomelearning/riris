@@ -1,0 +1,52 @@
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #ddd;
+    height: 28px; /* or any height you prefer */
+}
+
+.app-name-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.app-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding-right: 8px;
+}
+
+.sidebar-buffer {
+    width: 2px;
+    height: 24px; /* vertical line length */
+    background-color: #ccc; /* soft gray line */
+    margin: 0 10px; /* spacing between dp25 and button */
+}
+
+.sidebar-toggle {
+    font-size: 1.25rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+    background-color: #e0e0e0;
+}
+
+.user-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.username {
+    font-size: 0.9rem;
+    color: #333;
+}

@@ -1,0 +1,86 @@
+[
+  {
+    "author": "Gene Kim",
+    "quote": "DevOps is the outcome of applying lean principles to the entire value stream, from idea to customer."
+  },
+  {
+    "author": "Jez Humble",
+    "quote": "The goal of DevOps is to enable the fast flow of planned work into production while preserving high quality, stability, and security."
+  },
+  {
+    "author": "Patrick Debois",
+    "quote": "DevOps is not a goal, but a never-ending process of continual improvement."
+  },
+  {
+    "author": "Martin Fowler",
+    "quote": "Continuous integration doesn’t get rid of bugs, but it does make them dramatically easier to find and remove."
+  },
+  {
+    "author": "Gene Kim",
+    "quote": "Improving daily work is even more important than doing daily work."
+  },
+  {
+    "author": "Jez Humble",
+    "quote": "If it hurts, do it more often. Bring the pain forward."
+  },
+  {
+    "author": "Kent Beck",
+    "quote": "Optimism is an occupational hazard of programming: feedback is the treatment."
+  },
+  {
+    "author": "Anonymous",
+    "quote": "DevOps is not about tools; it is about culture, collaboration, and shared responsibility."
+  },
+  {
+    "author": "Anonymous",
+    "quote": "The SDLC is only as strong as its feedback loops."
+  },
+  {
+    "author": "Industry Proverb",
+    "quote": "You cannot automate a broken process and expect reliable results."
+  },
+  {
+    "author": "Anonymous",
+    "quote": "In DevOps, speed without discipline is chaos, and discipline without speed is stagnation."
+  },
+  {
+    "author": "Gene Kim",
+    "quote": "The real value of DevOps is not faster servers, but faster learning."
+  },
+  {
+    "author": "Jez Humble",
+    "quote": "Continuous delivery is the ability to get changes into production safely, quickly, and sustainably."
+  },
+  {
+    "author": "Nicole Forsgren",
+    "quote": "High-performing teams do not trade speed for stability; they achieve both through good engineering practices."
+  },
+  {
+    "author": "Martin Fowler",
+    "quote": "Any fool can write code that a computer can understand. Good programmers write code that humans can understand."
+  },
+  {
+    "author": "Kent Beck",
+    "quote": "The cost of delay is often invisible until it becomes catastrophic."
+  },
+  {
+    "author": "Anonymous",
+    "quote": "DevOps succeeds when development and operations stop optimizing locally and start optimizing globally."
+  },
+  {
+    "author": "Industry Proverb",
+    "quote": "Automate the path to production, not just the final step."
+  },
+  {
+    "author": "Anonymous",
+    "quote": "A healthy SDLC treats failures as data, not defects in people."
+  },
+  {
+    "author": "Werner Vogels",
+    "quote": "Everything fails, all the time. Designing systems to tolerate failure is the foundation of modern software delivery."
+  },
+  {
+    "author": "Anonymous",
+    "quote": "DevOps is what happens when ownership extends beyond deployment and into production outcomes."
+  }
+]

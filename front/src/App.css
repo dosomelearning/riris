@@ -1,0 +1,354 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, sans-serif;
+  background: #ffffff;
+  color: #333;
+}
+#root {
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f0f0f0;
+  padding: 0 1rem;
+  height: 3rem;
+  border-bottom: 1px solid #ccc;
+}
+
+.app-name {
+  font-weight: bold;
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.username {
+  color: #555;
+}
+
+/* Footer */
+.footer {
+  background-color: #f0f0f0;
+  text-align: center;
+  height: 3rem;
+  line-height: 3rem;
+  border-top: 1px solid #ccc;
+  font-size: 0.9rem;
+}
+
+/* Layout */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  display: flex;
+  width: 80px;
+  background-color: #fafafa;
+  border-right: 1px solid #ddd;
+  padding: 1rem;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  margin-bottom: 0.5rem;
+}
+
+.sidebar a {
+  color: #3f51b5;
+  text-decoration: none;
+}
+
+.sidebar a:hover {
+  text-decoration: underline;
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+/* StudentIdentityBridge.tsx */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+}
+
+.modal-buttons {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.validation-error {
+  color: #d33;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.session-block {
+  background: #f9f9f9;
+  border-left: 4px solid #f1672c;
+  padding: 1rem 1.5rem;
+  margin: 1rem 0;
+  border-radius: 8px;
+}
+
+.activity-list {
+  padding-left: 1.2rem;
+  margin-top: 0.5rem;
+}
+
+.activity-item {
+  margin-bottom: 1rem;
+}
+
+.start-button {
+  margin-top: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  background-color: #d6d2d1;
+  color: #0e0e0e;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s ease-in-out;
+}
+
+.start-button:hover {
+  background-color: #73b6cf;
+}
+
+
+.stop-button {
+  margin-top: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  background-color: #d6d2d1;
+  color: #0e0e0e;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s ease-in-out;
+}
+
+.stop-button:hover {
+  background-color: #73b6cf;
+}
+
+.console-button {
+  margin-top: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  background-color: #f1672c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s ease-in-out;
+}
+
+.console-button:hover {
+  background-color: #fa9162;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* QuoteBanner.css */
+.quote-banner {
+  padding: 1rem;
+  margin: 2rem auto;
+  max-width: 800px;
+  font-style: italic;
+  text-align: center;
+  color: #555;
+}
+
+.quote-banner cite {
+  display: block;
+  margin-top: 0.5rem;
+  font-weight: bold;
+}
+
+/* ApiDiagnostics split layout */
+.split-vertical {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 0.75rem;
+}
+
+.pane {
+  background: #fff;
+  border: 1px solid #e2e2e2;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.pane-top {
+  flex: 0 0 auto;
+}
+
+.pane-bottom {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.form-label {
+  min-width: 110px;
+  color: #444;
+}
+
+.form-input {
+  flex: 1 1 320px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.response-box {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0.75rem;
+  background: #fafafa;
+}
+
+.meta-box {
+  white-space: normal;
+}
+
+.body-box {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.prelike {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 0.6rem 0.7rem;
+}
+
+.error-box {
+  border-color: #f2c0c0;
+  background: #fff6f6;
+  color: #9a0000;
+}
+
+/* Ensure the response body area is visibly tall even for small payloads */
+.body-box .prelike {
+  min-height: 140px;
+}
+
+/* Tabs inside pane-top */
+.tabs-block {
+  margin-top: 0.25rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: #444;
+}
+
+.tab:hover {
+  background: #f7f7f7;
+}
+
+.tab.active {
+  border-color: #3f51b5;
+  font-weight: 600;
+  color: #3f51b5;
+}
+
+.tab-panel {
+  padding-top: 0.75rem;
+}
+
+.placeholder {
+  color: #777;
+  font-style: italic;
+}
