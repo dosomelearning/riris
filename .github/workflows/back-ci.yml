@@ -29,27 +29,29 @@ jobs:
         run: |
           set -euxo pipefail
           python -m pip install --upgrade pip
-          echo "PWD=$(pwd)"
-          echo "Listing back/:"
-          ls -la
-          echo "requirements.txt:"
-          test -f requirements.txt && cat requirements.txt || echo "missing"
-          echo "requirements-dev.txt:"
-          test -f requirements-dev.txt && cat requirements-dev.txt || echo "missing"
       
-          # Install declared deps if present
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          echo "Installing Lambda runtime requirements found under src/**/requirements.txt"
+          found=0
+          while IFS= read -r req; do
+            found=1
+            echo "Installing: $req"
+            pip install -r "$req"
+          done < <(find src -type f -name "requirements.txt" -print)
       
-          # Guardrails: ensure key packages exist (CI must not rely on runner defaults)
+          if [ "$found" -eq 0 ]; then
+            echo "No per-Lambda requirements.txt found under src/. (Unexpected)"
+          fi
+      
+          if [ -f requirements-dev.txt ]; then
+            echo "Installing dev requirements-dev.txt"
+            pip install -r requirements-dev.txt
+          else
+            echo "Missing back/requirements-dev.txt (recommended to add)."
+          fi
+      
           python -c "import boto3; print('boto3 ok')"
           python -c "import dateutil; print('dateutil ok')"
           python -c "import pytest; print('pytest ok')"
 
       - name: Unit tests
-        run: |
-          if [ -d tests ]; then
-            pytest -q
-          else
-            echo "No tests/ directory; skipping."
-          fi
+        run: pytest -q
