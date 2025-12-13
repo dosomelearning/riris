@@ -27,10 +27,24 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -euxo pipefail
           python -m pip install --upgrade pip
+          echo "PWD=$(pwd)"
+          echo "Listing back/:"
+          ls -la
+          echo "requirements.txt:"
+          test -f requirements.txt && cat requirements.txt || echo "missing"
+          echo "requirements-dev.txt:"
+          test -f requirements-dev.txt && cat requirements-dev.txt || echo "missing"
+      
+          # Install declared deps if present
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-          pip install pytest
+      
+          # Guardrails: ensure key packages exist (CI must not rely on runner defaults)
+          python -c "import boto3; print('boto3 ok')"
+          python -c "import dateutil; print('dateutil ok')"
+          python -c "import pytest; print('pytest ok')"
 
       - name: Unit tests
         run: |
