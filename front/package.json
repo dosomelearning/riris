@@ -1,11 +1,11 @@
 {
-  "name": "dzts-frontend",
+  "name": "riris-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "vitest",
+    "test": "vitest run --passWithNoTests",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

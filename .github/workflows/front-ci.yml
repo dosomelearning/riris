@@ -48,7 +48,7 @@ jobs:
       - name: Test
         run: |
           if jq -e '.scripts.test' package.json > /dev/null; then
-            npm test -- --ci --watch=false
+            npm test 
           else
             echo "No test script; skipping."
           fi
