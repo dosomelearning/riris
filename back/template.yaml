@@ -34,9 +34,7 @@ Resources:
           AttributeType: S
         - AttributeName: SK
           AttributeType: S
-        - AttributeName: GSI1PK
-          AttributeType: S
-        - AttributeName: GSI1SK
+        - AttributeName: fileId
           AttributeType: S
       KeySchema:
         - AttributeName: PK
@@ -46,10 +44,8 @@ Resources:
       GlobalSecondaryIndexes:
         - IndexName: GSI1
           KeySchema:
-            - AttributeName: GSI1PK
+            - AttributeName: fileId
               KeyType: HASH
-            - AttributeName: GSI1SK
-              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       Tags:
@@ -61,7 +57,6 @@ Resources:
     Properties:
       StageName: Prod
       Auth:
-        DefaultAuthorizer: CognitoAuthorizer
         AddDefaultAuthorizerToCorsPreflight: False
         Authorizers:
           CognitoAuthorizer:
@@ -69,8 +64,18 @@ Resources:
       DefinitionBody:
         swagger: "2.0"
         info:
+          securityDefinitions:
+            CognitoAuthorizer:
+              type: apiKey
+              name: Authorization
+              in: header
+              x-amazon-apigateway-authtype: cognito_user_pools
+              x-amazon-apigateway-authorizer:
+                type: cognito_user_pools
+                providerARNs:
+                  - !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}
           title: "RIRIS Backend API"
-          version: "1.0"
+          version: "1.0.1"
         # without these error definitions, every error looks like CORS issue!!!
         x-amazon-apigateway-gateway-responses:
           DEFAULT_4XX:
@@ -124,6 +129,8 @@ Resources:
                       method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
             get:
               summary: "List users files"
+              security:
+                - CognitoAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: POST
@@ -134,6 +141,8 @@ Resources:
                   description: "Successful response"
             post:
               summary: "Upload new file"
+              security:
+                - CognitoAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: POST
@@ -168,23 +177,24 @@ Resources:
                       method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
             get:
               summary: "Public download (redirect)"
-              security: []
+              responses:
+                "302":
+                  description: Redirect to pre-signed S3 URL
+                "404":
+                  description: Not found
+                "410":
+                  description: Expired
+                "403":
+                  description: Deleted / not allowed
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: POST
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FilesFunction.Arn}/invocations"
                 responses: { }
-              responses:
-                "302":
-                  description: "Redirect to pre-signed S3 URL"
-                "404":
-                  description: "Not found"
-                "410":
-                  description: "Expired"
-                "403":
-                  description: "Deleted / not allowed"
             delete:
               summary: "Delete file"
+              security:
+                - CognitoAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: POST
@@ -219,6 +229,38 @@ Resources:
         gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS'"
       ResponseTemplates:
         application/json: '{"message":"Internal Server Error"}'
+
+  AllowApiInvokeFilesFunctionGetFiles:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FilesFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RIRISApi}/Prod/GET/files"
+
+  AllowApiInvokeFilesFunctionPostFiles:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FilesFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RIRISApi}/Prod/POST/files"
+
+  AllowApiInvokeFilesFunctionGetFileById:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FilesFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RIRISApi}/Prod/GET/files/*"
+
+  AllowApiInvokeFilesFunctionDeleteFileById:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FilesFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RIRISApi}/Prod/DELETE/files/*"
 
   FilesFunctionRole:
     Type: AWS::IAM::Role
@@ -273,31 +315,6 @@ Resources:
       MemorySize: 256
       Timeout: 10
       Role: !GetAtt FilesFunctionRole.Arn
-      Events:
-        GetFilesApi:
-          Type: Api
-          Properties:
-            RestApiId: !Ref RIRISApi
-            Path: /files
-            Method: GET
-        PostFileApi:
-          Type: Api
-          Properties:
-            RestApiId: !Ref RIRISApi
-            Path: /files
-            Method: POST
-        GetFileById:
-          Type: Api
-          Properties:
-            RestApiId: !Ref RIRISApi
-            Path: /files/{id}
-            Method: GET
-        DeleteFileByIdApi:
-          Type: Api
-          Properties:
-            RestApiId: !Ref RIRISApi
-            Path: /files/{id}
-            Method: DELETE
       Environment:
         Variables:
           LOG_LEVEL: INFO

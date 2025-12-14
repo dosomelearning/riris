@@ -1,0 +1,30 @@
+[
+  {
+    "PK": "u#a3348852-60b1-7089-10fe-a9f820df19e3",
+    "SK": "f#3d0e7c3a-4d5a-4f8d-8f3f-7c2c9e2d6b1a",
+    "fileId": "3d0e7c3a-4d5a-4f8d-8f3f-7c2c9e2d6b1a",
+    "ownerId": "a3348852-60b1-7089-10fe-a9f820df19e3",
+    "email": "vs@digisar.net",
+    "s3Prefix": "files",
+    "originalFileName": "image1.jpg",
+    "contentType": "image/jpeg",
+    "sizeBytes": 5296052,
+    "status": "ready",
+    "createdAt": "2025-12-14T12:00:00Z",
+    "readyAt": "2025-12-14T12:00:30Z"
+  },
+  {
+    "PK": "u#a3348852-60b1-7089-10fe-a9f820df19e3",
+    "SK": "f#9b7b6b8e-2a1e-4c3b-9d7e-4a1c2e3f4b5c",
+    "fileId": "9b7b6b8e-2a1e-4c3b-9d7e-4a1c2e3f4b5c",
+    "ownerId": "a3348852-60b1-7089-10fe-a9f820df19e3",
+    "email": "vs@digisar.net",
+    "s3Prefix": "files",
+    "originalFileName": "jasperreports-7.0.1-project.tar.gz",
+    "contentType": "application/gzip",
+    "sizeBytes": 15877909,
+    "status": "ready",
+    "createdAt": "2025-12-14T12:01:00Z",
+    "readyAt": "2025-12-14T12:01:20Z"
+  }
+]
