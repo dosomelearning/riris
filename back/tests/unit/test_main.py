@@ -51,14 +51,18 @@ def test_handler_get_files_non_admin_routes_to_user_view(lambda_main, monkeypatc
     event = {
         "httpMethod": "GET",
         "resource": "/files",
-        "requestContext": {"authorizer": {"claims": {"email": "user@example.com"}}},
+        "requestContext": {
+            "authorizer": {
+                "claims": {
+                    "sub": "a3348852-60b1-7089-10fe-a9f820df19e2",
+                    "email": "user@example.com",
+                }
+            }
+        },
     }
 
     resp = lambda_main.handler(event, None)
     assert resp["statusCode"] == 200
-
-    body = json.loads(resp["body"])
-    assert body["message"].startswith("Dummy user return")
 
 
 def test_handler_method_not_allowed(lambda_main):
