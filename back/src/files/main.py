@@ -30,6 +30,20 @@ def build_response(status_code, body):
         "body": json.dumps(body, default=str),
     }
 
+def build_redirect(location: str):
+    """Builds standardized 302 redirect response."""
+    return {
+        "statusCode": 302,
+        "headers": {
+            "Location": location,
+            "Cache-Control": "no-store",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        },
+        "body": "",
+    }
+
 
 def is_admin_user(event):
     """Check if the user is a member of Admin group."""
@@ -77,6 +91,34 @@ def _get_email(event) -> str | None:
     claims = _get_claims(event)
     return claims.get("email") or claims.get("cognito:username")
 
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+def _parse_iso(ts: str) -> datetime | None:
+    # Keep minimal; if you already use dateutil elsewhere, you can swap this.
+    try:
+        if ts.endswith("Z"):
+            ts = ts[:-1] + "+00:00"
+        return datetime.fromisoformat(ts)
+    except Exception:
+        return None
+
+def _is_expired(item: dict) -> bool:
+    expires_at = item.get("expiresAt")
+    if not expires_at:
+        return False
+    dt = _parse_iso(str(expires_at))
+    return bool(dt and dt <= _now_utc())
+
+def _get_item_by_file_id(file_id: str) -> dict | None:
+    """Lookup file metadata by fileId using GSI1 (PK=fileId)."""
+    resp = table.query(
+        IndexName="GSI1",
+        KeyConditionExpression=Key("fileId").eq(file_id),
+        Limit=1,
+    )
+    items = resp.get("Items", [])
+    return items[0] if items else None
 
 def admin_view(event):
     """Returns files view for admin users.
@@ -180,6 +222,45 @@ def delete_file(event):
         logger.exception("Failed to delete file")
         return build_response(500, {"message": "Internal server error", "error": str(e)})
 
+def public_download(event):
+    """Public download: GET /files/{id} -> 302 redirect to presigned S3 GET."""
+    file_id = (event.get("pathParameters") or {}).get("id") or (event.get("pathParameters") or {}).get("fileId")
+    if not file_id:
+        return build_response(400, {"message": "Missing fileId in path"})
+
+    try:
+        item = _get_item_by_file_id(file_id)
+        if not item:
+            return build_response(404, {"message": "Not found"})
+
+        status = item.get("status")
+
+        # Explicit handling per spec
+        if status == "deleted":
+            return build_response(403, {"message": "Deleted"})
+        if status == "expired" or _is_expired(item):
+            return build_response(410, {"message": "Expired"})
+        if status != "ready":
+            # Conservative: not downloadable yet
+            return build_response(404, {"message": "Not found"})
+
+        bucket = os.environ["FILES_BUCKET"]
+        s3_prefix = item.get("s3Prefix") or os.getenv("S3_PREFIX", "files")
+        object_key = f"{s3_prefix}/{file_id}"
+
+        s3 = boto3.client("s3")
+        url = s3.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": bucket, "Key": object_key},
+            ExpiresIn=900,
+        )
+
+        return build_redirect(url)
+
+    except Exception as e:
+        logger.exception("Failed public download")
+        return build_response(500, {"message": "Internal server error", "error": str(e)})
+
 
 def handler(event, context):  # pylint: disable=unused-argument
     """Lambda handler for this module."""
@@ -201,6 +282,11 @@ def handler(event, context):  # pylint: disable=unused-argument
         if http_method == "DELETE" and path == "/files/{id}":
             logger.info("Invoking delete_file")
             return delete_file(event)
+
+        # 7.5 Public download: GET /files/{id}
+        if http_method == "GET" and path == "/files/{id}":
+            logger.info("Invoking public_download")
+            return public_download(event)
 
         return build_response(405, {"message": "Method not allowed"})
 
