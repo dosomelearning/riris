@@ -14,6 +14,14 @@ Parameters:
   CORSAllowOrigin:
     Type: String
     Default: "*"
+  FilesBucketName:
+    Default: "riris-files-ru7btob1t3"
+    Type: String
+    Description: "Existing S3 bucket name for file data (managed outside this stack)"
+  S3Prefix:
+    Type: String
+    Default: "files"
+    Description: "S3 key prefix for objects, e.g. files/<fileId>"
 
 Resources:
   BackendTable:
@@ -26,11 +34,24 @@ Resources:
           AttributeType: S
         - AttributeName: SK
           AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
       KeySchema:
         - AttributeName: PK
           KeyType: HASH
         - AttributeName: SK
           KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
       Tags:
         - Key: CostAllocation
           Value: !Ref CostAllocationTagValue
@@ -146,15 +167,22 @@ Resources:
                       method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET,PUT,DELETE'"
                       method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
             get:
-              summary: "Get file by id"
+              summary: "Public download (redirect)"
+              security: []
               x-amazon-apigateway-integration:
                 type: "aws_proxy"
                 httpMethod: POST
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FilesFunction.Arn}/invocations"
                 responses: { }
               responses:
-                "200":
-                  description: "Successful response"
+                "302":
+                  description: "Redirect to pre-signed S3 URL"
+                "404":
+                  description: "Not found"
+                "410":
+                  description: "Expired"
+                "403":
+                  description: "Deleted / not allowed"
             delete:
               summary: "Delete file"
               x-amazon-apigateway-integration:
@@ -221,6 +249,12 @@ Resources:
                   - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${BackendTable}/index/*"
               - Effect: Allow
                 Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub "arn:aws:s3:::${FilesBucketName}/${S3Prefix}/*"
+              - Effect: Allow
+                Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
@@ -268,9 +302,67 @@ Resources:
         Variables:
           LOG_LEVEL: INFO
           BACKEND_TABLE: !Ref BackendTable
+          FILES_BUCKET: !Ref FilesBucketName
+          S3_PREFIX: !Ref S3Prefix
 
+  S3ObjectCreatedFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-S3ObjectCreatedFunctionRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}-S3ObjectCreatedFunctionAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !GetAtt BackendTable.Arn
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${BackendTable}/index/*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+      Tags:
+        - Key: CostAllocation
+          Value: !Ref CostAllocationTagValue
+
+  S3ObjectCreatedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-S3ObjectCreatedFunction"
+      Handler: main.handler
+      Runtime: python3.12
+      CodeUri: src/s3_object_created/
+      MemorySize: 128
+      Timeout: 10
+      Role: !GetAtt S3ObjectCreatedFunctionRole.Arn
+      Environment:
+        Variables:
+          LOG_LEVEL: INFO
+          BACKEND_TABLE: !Ref BackendTable
+          S3_PREFIX: !Ref S3Prefix
+
+  AllowS3InvokeS3ObjectCreatedFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref S3ObjectCreatedFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub "arn:aws:s3:::${FilesBucketName}"
 
 Outputs:
-  HelloWorldApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+  ApiBaseUrl:
+    Description: "API Gateway endpoint URL for Prod stage for RIRIS backend function"
     Value: !Sub "https://${RIRISApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
