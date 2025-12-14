@@ -34,9 +34,7 @@ Resources:
           AttributeType: S
         - AttributeName: SK
           AttributeType: S
-        - AttributeName: GSI1PK
-          AttributeType: S
-        - AttributeName: GSI1SK
+        - AttributeName: fileId
           AttributeType: S
       KeySchema:
         - AttributeName: PK
@@ -46,10 +44,8 @@ Resources:
       GlobalSecondaryIndexes:
         - IndexName: GSI1
           KeySchema:
-            - AttributeName: GSI1PK
+            - AttributeName: fileId
               KeyType: HASH
-            - AttributeName: GSI1SK
-              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       Tags:
