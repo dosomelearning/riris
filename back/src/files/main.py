@@ -4,6 +4,7 @@ import os
 import json
 import logging
 from decimal import Decimal
+from datetime import datetime, timezone
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -51,6 +52,14 @@ def _to_int(v):
         return int(v)
     except (TypeError, ValueError):
         return None
+
+def _get_path_param_file_id(event) -> str | None:
+    """Extract fileId from pathParameters."""
+    return (event.get("pathParameters") or {}).get("id") or (event.get("pathParameters") or {}).get("fileId")
+
+def _now_iso() -> str:
+    """UTC timestamp in ISO8601."""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 def _get_claims(event) -> dict:
     """Extract JWT claims from API GW authorizer (id_token)."""
@@ -119,6 +128,58 @@ def user_files_view(event):
         logger.exception("Failed to fetch user files view")
         return build_response(500, {"message": "Internal server error", "error": str(e)})
 
+def delete_file(event):
+    """Deletes a file (owner-only). Implements DELETE /files/{id}."""
+    owner_id = _get_owner_id(event)
+    if not owner_id:
+        return build_response(401, {"message": "Unauthorized"})
+
+    file_id = _get_path_param_file_id(event)
+    if not file_id:
+        return build_response(400, {"message": "Missing fileId in path"})
+
+    pk = f"u#{owner_id}"
+    sk = f"f#{file_id}"
+
+    try:
+        # Owner check is implicit: only fetch within caller's partition.
+        resp = table.get_item(Key={"PK": pk, "SK": sk})
+        item = resp.get("Item")
+        if not item:
+            # Not found under caller -> not allowed to delete
+            return build_response(403, {"message": "Forbidden: owner access only"})
+
+        # If already deleted, treat as idempotent delete
+        status = item.get("status")
+        s3_prefix = item.get("s3Prefix") or os.getenv("S3_PREFIX", "files")
+        bucket = os.environ.get("FILES_BUCKET")
+        object_key = f"{s3_prefix}/{file_id}"
+
+        # Delete from S3 (best-effort idempotent; deleting non-existing is not fatal)
+        if bucket:
+            s3 = boto3.client("s3")
+            try:
+                s3.delete_object(Bucket=bucket, Key=object_key)
+            except Exception:
+                logger.exception("Failed to delete S3 object: s3://%s/%s", bucket, object_key)
+                # If S3 delete fails, we should not mark DDB deleted.
+                return build_response(500, {"message": "Internal server error", "error": "Failed to delete S3 object"})
+
+        # Update DDB status -> deleted
+        # (Spec requires status updated to deleted; we also set deletedAt for traceability.)
+        table.update_item(
+            Key={"PK": pk, "SK": sk},
+            UpdateExpression="SET #st = :deleted, deletedAt = :ts",
+            ExpressionAttributeNames={"#st": "status"},
+            ExpressionAttributeValues={":deleted": "deleted", ":ts": _now_iso()},
+        )
+
+        return build_response(200, {"message": "deleted", "fileId": file_id})
+
+    except Exception as e:
+        logger.exception("Failed to delete file")
+        return build_response(500, {"message": "Internal server error", "error": str(e)})
+
 
 def handler(event, context):  # pylint: disable=unused-argument
     """Lambda handler for this module."""
@@ -135,6 +196,11 @@ def handler(event, context):  # pylint: disable=unused-argument
         if http_method == "GET" and path == "/files":
             logger.info("Invoking user_files_view (non-admin)")
             return user_files_view(event)
+
+        # 7.4 DELETE /files/{id}
+        if http_method == "DELETE" and path == "/files/{id}":
+            logger.info("Invoking delete_file")
+            return delete_file(event)
 
         return build_response(405, {"message": "Method not allowed"})
 
