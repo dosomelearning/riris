@@ -20,6 +20,7 @@ export default function Sidebar() {
                 <ul>
                     {/* Common links for all authenticated users */}
                     <li><NavLink to="/">Home</NavLink></li>
+                    <li><NavLink to="/settings">Nastavitve</NavLink></li>
 
                     {/* Admin-only links */}
                     {isAdmin && (
