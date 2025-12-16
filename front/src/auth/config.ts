@@ -15,5 +15,5 @@ export const cognitoDomain = 'https://riris-auth.auth.eu-central-1.amazoncognito
 export const userManager = new UserManager(cognitoAuthConfig);
 
 export const apiConfig = {
-    baseUrl: 'https://CHANGEME.execute-api.eu-central-1.amazonaws.com/Prod'
+    baseUrl: 'https://haj8b7ppl8.execute-api.eu-central-1.amazonaws.com/Prod'
 };

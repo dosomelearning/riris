@@ -3,22 +3,26 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Sidebar from './components/Sidebar';
+import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from 'react-oidc-context';
 import './App.css';
-import HomePublic from './pages/HomePublic';
-import HomeAdmin from './pages/HomeAdmin';
-import HomeUser from './pages/HomeUser';
 
+import HomePublic from './pages/HomePublic';
+import FilesDashboard from './pages/FilesDashboard';
+import HomeAdmin from './pages/HomeAdmin';
+import Settings from './pages/Settings';
+import PublicDownload from './pages/PublicDownload';
+import NotFound from './pages/NotFound';
+import Logout from './pages/Logout';
 
 function App() {
     const auth = useAuth();
-    const userGroupsRaw = auth.user?.profile?.["cognito:groups"];
-    const userGroups: string[] = Array.isArray(userGroupsRaw) ? userGroupsRaw : userGroupsRaw ? [userGroupsRaw] : [];
-    const isAdmin = userGroups.some(g => String(g).toLowerCase() === 'admins');
+
     const [sidebarVisible, setSidebarVisible] = useState(() => {
         const stored = localStorage.getItem('sidebarVisible');
         return stored !== null ? stored === 'true' : true;
     });
+
     const handleSidebarToggle = () => {
         setSidebarVisible(prev => {
             const next = !prev;
@@ -27,30 +31,46 @@ function App() {
         });
     };
 
-    if (auth.isLoading) return null; // or a spinner
+    if (auth.isLoading) return null;
 
     return (
         <Router>
             <Header onSidebarToggle={handleSidebarToggle} />
-            {auth.isAuthenticated ? (
+
+            {/* PUBLIC ROUTE always available (no auth, no sidebar) */}
+            <Routes>
+                <Route path="/d/:fileId" element={<PublicDownload />} />
+            </Routes>
+
+            {/* MAIN LAYOUT AREA (ensures footer placement is stable) */}
             <div className="main-layout">
-                {sidebarVisible && <Sidebar />}
+                {auth.isAuthenticated && sidebarVisible && <Sidebar />}
+
                 <main className="main-content">
-                    <Routes>
-                        <Route path="/" element={isAdmin ? <HomeAdmin /> : <HomeUser />} />
-                        <Route path="/logout" element={<div>You have been logged out.</div>} />
-                    </Routes>
+                    {auth.isAuthenticated ? (
+                        <Routes>
+                            <Route path="/" element={<FilesDashboard />} />
+                            <Route path="/settings" element={<Settings />} />
+                            <Route
+                                path="/admin"
+                                element={
+                                    <ProtectedRoute allowedGroups={['Admins']}>
+                                        <HomeAdmin />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route path="/logout" element={<Logout />} />
+                            <Route path="*" element={<NotFound />} />
+                        </Routes>
+                    ) : (
+                        <Routes>
+                            <Route path="/" element={<HomePublic />} />
+                            <Route path="/logout" element={<Logout />} />
+                            <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes>
+                    )}
                 </main>
             </div>
-            ) : (
-                // Not authenticated — show Home only
-                <main className="main-content">
-                    <Routes>
-                        <Route path="/" element={<HomePublic />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                </main>
-            )}
 
             <Footer />
         </Router>
