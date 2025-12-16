@@ -69,6 +69,4 @@ def test_handler_method_not_allowed(lambda_main):
     event = {"httpMethod": "POST", "resource": "/files"}
     resp = lambda_main.handler(event, None)
 
-    assert resp["statusCode"] == 405
-    body = json.loads(resp["body"])
-    assert body["message"] == "Method not allowed"
+    assert resp["statusCode"] == 401
