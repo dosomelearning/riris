@@ -4,15 +4,24 @@ import os
 import json
 import logging
 from decimal import Decimal
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from dateutil import parser as dt_parser, tz
+import uuid
 
 import boto3
 from boto3.dynamodb.conditions import Key
 
+DEFAULT_EXPIRES_DAYS = int(os.getenv("DEFAULT_EXPIRES_DAYS", "7"))
+MAX_EXPIRES_DAYS = int(os.getenv("MAX_EXPIRES_DAYS", "30"))
+PRESIGN_PUT_EXPIRES_SECONDS = int(os.getenv("PRESIGN_PUT_EXPIRES_SECONDS", "900"))
+PRESIGN_GET_EXPIRES_SECONDS = int(os.getenv("PRESIGN_GET_EXPIRES_SECONDS", "900"))
+
+UTC = tz.UTC
 
 logger = logging.getLogger()
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
+s3 = boto3.client("s3")
 ddb = boto3.resource("dynamodb")
 table = ddb.Table(os.environ["BACKEND_TABLE"])
 
@@ -52,6 +61,34 @@ def is_admin_user(event):
     # groups can be a comma-delimited string depending on authorizer configuration
     return "Admins" in groups if groups else False
 
+def _get_sub(event) -> str | None:
+    """Extract Cognito user sub (stable identity)."""
+    claims = _get_claims(event)
+    return claims.get("sub")
+
+def _resolve_expiry_days(requested: int | None) -> int:
+    """Resolve expiry days with defaults and max clamp."""
+    if requested is None:
+        days = DEFAULT_EXPIRES_DAYS
+    else:
+        days = int(requested)
+    if days < 1:
+        days = 1
+    if days > MAX_EXPIRES_DAYS:
+        days = MAX_EXPIRES_DAYS
+    return days
+
+def _map_file_item(item: dict) -> dict:
+    return {
+        "fileId": item.get("fileId"),
+        "originalFileName": item.get("originalFileName"),
+        "contentType": item.get("contentType"),
+        "sizeBytes": _to_int(item.get("sizeBytes")),
+        "status": item.get("status"),
+        "createdAt": item.get("createdAt"),
+        "expiresAt": item.get("expiresAt"),
+        "passwordRequired": bool(item.get("passwordRequired", False)),
+    }
 
 def _to_int(v):
     """Convert DynamoDB numeric types (Decimal) to int for JSON response."""
@@ -161,6 +198,9 @@ def user_files_view(event):
                     "status": item.get("status"),
                     "createdAt": item.get("createdAt"),
                     "expiresAt": item.get("expiresAt"),
+                    "passwordRequired": bool(item.get("passwordRequired", False)),
+                    "downloadCount": _to_int(item.get("downloadCount", 0)),
+                    "downloadedAt": item.get("downloadedAt"),
                 }
             )
 
@@ -199,7 +239,7 @@ def delete_file(event):
 
         # Delete from S3 (best-effort idempotent; deleting non-existing is not fatal)
         if bucket:
-            s3 = boto3.client("s3")
+#            s3 = boto3.client("s3")
             try:
                 s3.delete_object(Bucket=bucket, Key=object_key)
             except Exception:
@@ -248,17 +288,159 @@ def public_download(event):
         s3_prefix = item.get("s3Prefix") or os.getenv("S3_PREFIX", "files")
         object_key = f"{s3_prefix}/{file_id}"
 
-        s3 = boto3.client("s3")
+        # Update DDB metrics (best-effort but atomic). Only for ready items.
+        try:
+            table.update_item(
+                Key={"PK": item["PK"], "SK": item["SK"]},
+                UpdateExpression="ADD downloadCount :one SET downloadedAt = :now",
+                ConditionExpression="#s = :ready",
+                ExpressionAttributeNames={"#s": "status"},
+                ExpressionAttributeValues={
+                    ":one": 1,
+                    ":now": _now_iso(),
+                    ":ready": "ready",
+                },
+            )
+        except Exception:
+            # Do not block download if metrics update fails.
+            logger.exception("Failed to update download metrics for fileId=%s", file_id)
+
         url = s3.generate_presigned_url(
             ClientMethod="get_object",
             Params={"Bucket": bucket, "Key": object_key},
-            ExpiresIn=900,
+            ExpiresIn=int(os.getenv("PRESIGN_GET_EXPIRES_SECONDS", "900")),
         )
 
         return build_redirect(url)
 
     except Exception as e:
         logger.exception("Failed public download")
+        return build_response(500, {"message": "Internal server error", "error": str(e)})
+
+        return build_redirect(url)
+
+    except Exception as e:
+        logger.exception("Failed public download")
+        return build_response(500, {"message": "Internal server error", "error": str(e)})
+
+def post_files(event):
+    """Initialize upload: create DDB record + return presigned PUT URL."""
+    owner_id = _get_sub(event)
+    email = _get_email(event)
+
+    if not owner_id:
+        return build_response(401, {"message": "Unauthorized"})
+
+    try:
+        body = event.get("body") or "{}"
+        payload = json.loads(body) if isinstance(body, str) else (body or {})
+        original_file_name = payload.get("originalFileName")
+        content_type = payload.get("contentType") or "application/octet-stream"
+        size_bytes = payload.get("sizeBytes")
+        expires_in_days = payload.get("expiresInDays")
+
+        if not original_file_name:
+            return build_response(400, {"message": "Missing originalFileName"})
+        if size_bytes is None:
+            return build_response(400, {"message": "Missing sizeBytes"})
+
+        days = _resolve_expiry_days(expires_in_days)
+        created_at = _now_iso()
+        expires_at = (
+                datetime.now(timezone.utc) + timedelta(days=days)
+        ).isoformat().replace("+00:00", "Z")
+
+        file_id = str(uuid.uuid4())
+        pk = f"u#{owner_id}"
+        sk = f"f#{file_id}"
+        s3_prefix = os.environ.get("S3_PREFIX", "files")
+        bucket = os.environ["FILES_BUCKET"]
+        key = f"{s3_prefix}/{file_id}"
+
+        item = {
+            "PK": pk,
+            "SK": sk,
+            "fileId": file_id,
+            "ownerId": owner_id,
+            "email": email,
+            "s3Prefix": s3_prefix,
+            "originalFileName": original_file_name,
+            "contentType": content_type,
+            "sizeBytes": int(size_bytes),
+            "status": "uploading",
+            "createdAt": created_at,
+            "expiresAt": expires_at,
+            # future feature
+            "passwordRequired": False,
+        }
+
+        table.put_item(Item=item)
+
+        presigned = s3.generate_presigned_url(
+            ClientMethod="put_object",
+            Params={
+                "Bucket": bucket,
+                "Key": key,
+                "ContentType": content_type,
+            },
+            ExpiresIn=PRESIGN_PUT_EXPIRES_SECONDS,
+        )
+
+        return build_response(200, {
+            "fileId": file_id,
+            "upload": {
+                "method": "PUT",
+                "url": presigned,
+                "headers": {
+                    "Content-Type": content_type
+                },
+                "expiresInSeconds": PRESIGN_PUT_EXPIRES_SECONDS
+            }
+        })
+
+    except Exception as e:
+        logger.exception("Failed to initialize upload")
+        return build_response(500, {"message": "Internal server error", "error": str(e)})
+
+def public_file_metadata(event):
+    """Public: return file metadata by fileId (no redirect)."""
+    file_id = (event.get("pathParameters") or {}).get("id")
+    if not file_id:
+        return build_response(400, {"message": "Missing file id"})
+
+    try:
+        resp = table.query(
+            IndexName="GSI1",
+            KeyConditionExpression=Key("fileId").eq(file_id),
+            Limit=1,
+        )
+        items = resp.get("Items", [])
+        if not items:
+            return build_response(404, {"message": "Not found"})
+
+        item = items[0]
+        status = item.get("status")
+        expires_at = item.get("expiresAt")
+
+        # Deleted: keep your semantics (you already use 403)
+        if status == "deleted":
+            return build_response(403, {"message": "Deleted"})
+
+        # Expired logic: if expiresAt exists and is in the past => 410
+        if expires_at:
+            try:
+                exp_dt = dt_parser.isoparse(expires_at)
+                if exp_dt <= datetime.now(timezone.utc):
+                    return build_response(410, {"message": "Expired"})
+            except Exception:
+                # If expiresAt is malformed, treat as server error
+                logger.exception("Invalid expiresAt format")
+                return build_response(500, {"message": "Internal server error"})
+
+        return build_response(200, _map_file_item(item))
+
+    except Exception as e:
+        logger.exception("Failed to fetch public metadata")
         return build_response(500, {"message": "Internal server error", "error": str(e)})
 
 
@@ -277,6 +459,16 @@ def handler(event, context):  # pylint: disable=unused-argument
         if http_method == "GET" and path == "/files":
             logger.info("Invoking user_files_view (non-admin)")
             return user_files_view(event)
+
+        # 7.x POST /files (init upload)
+        if http_method == "POST" and path == "/files":
+            logger.info("Invoking post_files")
+            return post_files(event)
+
+        # Public metadata: GET /public/files/{id}
+        if http_method == "GET" and path == "/public/files/{id}":
+            logger.info("Invoking public_file_metadata")
+            return public_file_metadata(event)
 
         # 7.4 DELETE /files/{id}
         if http_method == "DELETE" and path == "/files/{id}":

@@ -22,6 +22,22 @@ Parameters:
     Type: String
     Default: "files"
     Description: "S3 key prefix for objects, e.g. files/<fileId>"
+  DefaultExpiresDays:
+    Type: Number
+    Default: 7
+    Description: "System default for file expiry (days)"
+  MaxExpiresDays:
+    Type: Number
+    Default: 30
+    Description: "System max for file expiry (days)"
+  PresignPutExpiresSeconds:
+    Type: Number
+    Default: 900
+    Description: "Expiry for presigned PUT URL (seconds)"
+  PresignGetExpiresSeconds:
+    Type: Number
+    Default: 900
+    Description: "Expiry for presigned GET URL (seconds)"
 
 Resources:
   BackendTable:
@@ -103,6 +119,48 @@ Resources:
               gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
               gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
         paths:
+          /public/files/{id}:
+            options:
+              summary: "CORS support for public metadata"
+              responses:
+                "200":
+                  description: "CORS response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                    Access-Control-Allow-Methods:
+                      type: "string"
+                    Access-Control-Allow-Headers:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                type: "mock"
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                      method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+            get:
+              summary: "Public file metadata for browser download page"
+              security: [ ]   # explicitly public
+              responses:
+                "200":
+                  description: "OK"
+                "404":
+                  description: "Not found"
+                "403":
+                  description: "Deleted"
+                "410":
+                  description: "Expired"
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: POST
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FilesFunction.Arn}/invocations"
+                responses: { }
+
           /files:
             options:
               summary: "CORS support"
@@ -262,6 +320,14 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RIRISApi}/Prod/DELETE/files/*"
 
+  AllowApiInvokeFilesFunctionGetPublicMetadata:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FilesFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RIRISApi}/Prod/GET/public/files/*"
+
   FilesFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -321,6 +387,10 @@ Resources:
           BACKEND_TABLE: !Ref BackendTable
           FILES_BUCKET: !Ref FilesBucketName
           S3_PREFIX: !Ref S3Prefix
+          DEFAULT_EXPIRES_DAYS: !Ref DefaultExpiresDays
+          MAX_EXPIRES_DAYS: !Ref MaxExpiresDays
+          PRESIGN_PUT_EXPIRES_SECONDS: !Ref PresignPutExpiresSeconds
+          PRESIGN_GET_EXPIRES_SECONDS: !Ref PresignGetExpiresSeconds
 
   S3ObjectCreatedFunctionRole:
     Type: AWS::IAM::Role

@@ -18,30 +18,35 @@ API_BASE_URL="$(tr -d '\n' < "$API_URL_FILE")"
 
 URL="${API_BASE_URL}/files/${TARGET_FILE_ID}"
 
-echo "▶ GET (no-follow) $URL"
+echo "▶ GET (follow redirect once; discard bytes) $URL"
 echo
 
-# Show headers, no body, no redirect following
-HEADERS="$(curl -sS -D - -o /dev/null "$URL")"
+# Single request:
+# -L follows redirect(s)
+# -o /dev/null discards bytes
+# -sS silent but shows errors
+# -w prints: final status code, redirect count, final URL
+OUT="$(
+  curl -sS -L -o /dev/null \
+    -w "final_http=%{http_code}\nredirects=%{num_redirects}\nfinal_url=%{url_effective}\n" \
+    "$URL"
+)"
 
-STATUS_LINE="$(printf '%s\n' "$HEADERS" | head -n1)"
-LOCATION="$(printf '%s\n' "$HEADERS" | awk -F': ' 'tolower($1)=="location"{print $2}' | tr -d '\r')"
-
-echo "$STATUS_LINE"
-echo "Location: ${LOCATION:-<missing>}"
+echo "$OUT"
 echo
 
-# Assert 302 + Location present
-echo "$STATUS_LINE" | grep -q " 302 " || fail "Expected HTTP 302"
-[[ -n "$LOCATION" ]] || fail "Expected Location header"
+FINAL_HTTP="$(printf '%s\n' "$OUT" | awk -F= '$1=="final_http"{print $2}')"
+REDIRECTS="$(printf '%s\n' "$OUT" | awk -F= '$1=="redirects"{print $2}')"
+FINAL_URL="$(printf '%s\n' "$OUT" | awk -F= '$1=="final_url"{print $2}')"
 
-echo "✅ Public download returned 302 + Location"
+[[ -n "$FINAL_HTTP" ]] || fail "Could not parse final_http"
+[[ -n "$REDIRECTS" ]] || fail "Could not parse redirects"
 
-echo
-echo "▶ GET (follow redirect, discard bytes)"
-echo
+# Expect at least one redirect (API -> S3 presigned)
+[[ "$REDIRECTS" -ge 1 ]] || fail "Expected at least 1 redirect (got $REDIRECTS)"
 
-# Follow redirect but discard downloaded content
-curl -sS -L -o /dev/null "$URL"
+# Final should be 200 (S3 object fetch)
+[[ "$FINAL_HTTP" == "200" ]] || fail "Expected final HTTP 200, got $FINAL_HTTP"
 
-echo "✅ Redirect-follow succeeded"
+echo "✅ Public download succeeded via redirect(s)=${REDIRECTS} (final: ${FINAL_HTTP})"
+echo "✅ Final URL: ${FINAL_URL}"
