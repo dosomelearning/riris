@@ -2,10 +2,15 @@ export type FileRow = {
     fileId: string;
     originalFileName?: string;
     contentType?: string;
-    sizeBytes?: number | string | null;
+    sizeBytes?: number | null;
     status?: string;
     createdAt?: string;
     expiresAt?: string | null;
+
+    // new fields from backend
+    passwordRequired: boolean;
+    downloadCount: number;
+    downloadedAt: string | null;
 };
 
 type Props = {
@@ -22,6 +27,13 @@ export default function FilesTable({ items, loading, selectedIds, onSelectionCha
         } else {
             onSelectionChange([...selectedIds, id]);
         }
+    }
+
+    function fmtIsoToSeconds(v?: string | null): string {
+        if (!v) return '';
+        // 2025-12-16T20:25:29.727157Z -> 2025-12-16T20:25:29Z
+        const [head] = v.split('.');
+        return head.endsWith('Z') ? head : `${head}Z`;
     }
 
     function toggleAll() {
@@ -53,6 +65,9 @@ export default function FilesTable({ items, loading, selectedIds, onSelectionCha
                 <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Velikost</th>
                 <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Ustvarjeno</th>
                 <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Poteče</th>
+                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Geslo</th>
+                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Prenosi</th>
+                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Zadnji prenos</th>
             </tr>
             </thead>
             <tbody>
@@ -68,8 +83,19 @@ export default function FilesTable({ items, loading, selectedIds, onSelectionCha
                         </td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.status ?? ''}</td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.sizeBytes ?? ''}</td>
-                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.createdAt ?? ''}</td>
-                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.expiresAt ?? ''}</td>
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{fmtIsoToSeconds(it.createdAt) ?? ''}</td>
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{fmtIsoToSeconds(it.expiresAt) ?? ''}</td>
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>
+                            {it.passwordRequired ? 'da' : 'ne'}
+                        </td>
+
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>
+                            {it.downloadCount}
+                        </td>
+
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>
+                            {fmtIsoToSeconds(it.downloadedAt) ?? ''}
+                        </td>
                     </tr>
                 );
             })}

@@ -23,10 +23,17 @@ export default function FilesDashboard() {
     const [showDetails, setShowDetails] = useState(false);
 
     const selectedCount = selectedIds.length;
+    const [showDeleted, setShowDeleted] = useState(false);
+    const visibleItems = useMemo(() => {
+        return showDeleted ? items : items.filter(i => i.status !== 'deleted');
+    }, [items, showDeleted]);
     const selectedSingle = useMemo(() => {
         if (selectedIds.length !== 1) return null;
-        return items.find(i => i.fileId === selectedIds[0]) ?? null;
+        return visibleItems.find(i => i.fileId === selectedIds[0]) ?? null;
     }, [items, selectedIds]);
+
+    const [uploadDone, setUploadDone] = useState(false);
+    const [uploadErr, setUploadErr] = useState<string | null>(null);
 
     async function refresh() {
         if (!auth.user?.id_token) return;
@@ -65,6 +72,24 @@ export default function FilesDashboard() {
         }
     }
 
+    function toggleShowDeleted() {
+        setShowDeleted(prev => !prev);
+        setSelectedIds([]); // avoid keeping selection of items that become hidden
+    }
+
+    async function copySelectedLinks() {
+        if (selectedIds.length === 0) return;
+
+        const base = window.location.origin;
+        const text = selectedIds.map(id => `${base}/d/${id}`).join('\n');
+
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch {
+            setError('Kopiranje v odložišče ni uspelo (clipboard).');
+        }
+    }
+
     return (
         <div>
             <h2>Moje datoteke</h2>
@@ -72,6 +97,9 @@ export default function FilesDashboard() {
             <FilesToolbar
                 loading={loading}
                 selectedCount={selectedCount}
+                showDeleted={showDeleted}
+                onToggleShowDeleted={toggleShowDeleted}
+                onCopyLinks={copySelectedLinks}
                 onUploadNew={() => setShowUpload(true)}
                 onDetails={() => setShowDetails(true)}
                 onDelete={onDeleteSelected}
@@ -85,7 +113,7 @@ export default function FilesDashboard() {
 
             <div style={{ marginTop: '0.75rem' }}>
                 <FilesTable
-                    items={items}
+                    items={visibleItems}
                     loading={loading}
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
@@ -96,15 +124,32 @@ export default function FilesDashboard() {
             <UploadModal
                 open={showUpload}
                 onClose={() => setShowUpload(false)}
-                onStartUpload={() => {
+                onUploadBegin={() => {
                     setShowUpload(false);
+                    setUploadDone(false);
+                    setUploadErr(null);
                     setShowUploadProgress(true);
+                }}
+                onUploadFinished={async (res) => {
+                    if (res.ok) {
+                        setUploadDone(true);
+                        setUploadErr(null);
+                        await refresh(); // refresh list immediately
+                    } else {
+                        setUploadDone(true);
+                        setUploadErr(res.error ?? 'Nalaganje ni uspelo');
+                    }
                 }}
             />
 
             <UploadProgressModal
                 open={showUploadProgress}
-                onClose={() => setShowUploadProgress(false)}
+                done={uploadDone}
+                error={uploadErr}
+                onClose={() => {
+                    setShowUploadProgress(false);
+                    void refresh();
+                }}
             />
 
             <FileDetailsModal
