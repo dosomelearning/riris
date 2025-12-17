@@ -6,10 +6,11 @@ import { initUpload, putObjectToPresignedUrl } from '../../api/files';
 type Props = {
     open: boolean;
     onClose: () => void;
-    onStartUpload: () => void; // signals dashboard to show spinner
+    onUploadBegin: () => void;
+    onUploadFinished: (result: { ok: boolean; error?: string }) => void;
 };
 
-export default function UploadModal({ open, onClose, onStartUpload }: Props) {
+export default function UploadModal({ open, onClose, onUploadBegin, onUploadFinished }: Props) {
     const auth = useAuth();
 
     const [file, setFile] = useState<File | null>(null);
@@ -28,7 +29,7 @@ export default function UploadModal({ open, onClose, onStartUpload }: Props) {
         setError(null);
 
         try {
-            onStartUpload();
+            onUploadBegin();
 
             const init = await initUpload(auth.user.id_token, {
                 originalFileName: file.name,
@@ -37,15 +38,14 @@ export default function UploadModal({ open, onClose, onStartUpload }: Props) {
                 expiresInDays,
             });
 
-            await putObjectToPresignedUrl(
-                init.upload.url,
-                file,
-                init.upload.headers
-            );
+            await putObjectToPresignedUrl(init.upload.url, file, init.upload.headers);
 
+            onUploadFinished({ ok: true });
             onClose();
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : 'Nalaganje ni uspelo');
+            const msg = e instanceof Error ? e.message : 'Nalaganje ni uspelo';
+            setError(msg);
+            onUploadFinished({ ok: false, error: msg });
             setSubmitting(false);
         }
     }

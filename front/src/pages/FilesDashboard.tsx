@@ -27,6 +27,8 @@ export default function FilesDashboard() {
         if (selectedIds.length !== 1) return null;
         return items.find(i => i.fileId === selectedIds[0]) ?? null;
     }, [items, selectedIds]);
+    const [uploadDone, setUploadDone] = useState(false);
+    const [uploadErr, setUploadErr] = useState<string | null>(null);
 
     async function refresh() {
         if (!auth.user?.id_token) return;
@@ -96,15 +98,32 @@ export default function FilesDashboard() {
             <UploadModal
                 open={showUpload}
                 onClose={() => setShowUpload(false)}
-                onStartUpload={() => {
+                onUploadBegin={() => {
                     setShowUpload(false);
+                    setUploadDone(false);
+                    setUploadErr(null);
                     setShowUploadProgress(true);
+                }}
+                onUploadFinished={async (res) => {
+                    if (res.ok) {
+                        setUploadDone(true);
+                        setUploadErr(null);
+                        await refresh(); // refresh list immediately
+                    } else {
+                        setUploadDone(true);
+                        setUploadErr(res.error ?? 'Nalaganje ni uspelo');
+                    }
                 }}
             />
 
             <UploadProgressModal
                 open={showUploadProgress}
-                onClose={() => setShowUploadProgress(false)}
+                done={uploadDone}
+                error={uploadErr}
+                onClose={() => {
+                    setShowUploadProgress(false);
+                    void refresh();
+                }}
             />
 
             <FileDetailsModal

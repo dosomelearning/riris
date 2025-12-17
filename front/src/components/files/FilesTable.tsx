@@ -29,6 +29,13 @@ export default function FilesTable({ items, loading, selectedIds, onSelectionCha
         }
     }
 
+    function fmtIsoToSeconds(v?: string | null): string {
+        if (!v) return '';
+        // 2025-12-16T20:25:29.727157Z -> 2025-12-16T20:25:29Z
+        const [head] = v.split('.');
+        return head.endsWith('Z') ? head : `${head}Z`;
+    }
+
     function toggleAll() {
         if (selectedIds.length === items.length) onSelectionChange([]);
         else onSelectionChange(items.map(i => i.fileId));
@@ -76,8 +83,8 @@ export default function FilesTable({ items, loading, selectedIds, onSelectionCha
                         </td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.status ?? ''}</td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.sizeBytes ?? ''}</td>
-                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.createdAt ?? ''}</td>
-                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.expiresAt ?? ''}</td>
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{fmtIsoToSeconds(it.createdAt) ?? ''}</td>
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{fmtIsoToSeconds(it.expiresAt) ?? ''}</td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>
                             {it.passwordRequired ? 'da' : 'ne'}
                         </td>
@@ -87,7 +94,7 @@ export default function FilesTable({ items, loading, selectedIds, onSelectionCha
                         </td>
 
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>
-                            {it.downloadedAt ?? ''}
+                            {fmtIsoToSeconds(it.downloadedAt) ?? ''}
                         </td>
                     </tr>
                 );
