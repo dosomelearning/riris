@@ -71,7 +71,7 @@ export default function PublicDownload() {
                     passwordRequired: Boolean(meta.passwordRequired),
                 };
 
-                console.log('meta', vm);
+//                console.log('meta', vm);
 
                 if (vm.passwordRequired) {
                     setState({ kind: 'password', meta: vm });

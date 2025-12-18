@@ -79,7 +79,18 @@ export default function FilesTable({ items, loading, selectedIds, onSelectionCha
                             <input type="checkbox" checked={checked} onChange={() => toggle(it.fileId)} />
                         </td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>
-                            {it.originalFileName ?? it.fileId}
+                            {(it.status ?? '').toLowerCase() === 'ready' ? (
+                                <a
+                                    href={`/d/${encodeURIComponent(it.fileId)}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {it.originalFileName ?? it.fileId}
+                                </a>
+                            ) : (
+                                <span>{it.originalFileName ?? it.fileId}</span>
+                            )}
                         </td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.status ?? ''}</td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.sizeBytes ?? ''}</td>
