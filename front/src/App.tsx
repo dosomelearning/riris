@@ -37,11 +37,6 @@ function App() {
         <Router>
             <Header onSidebarToggle={handleSidebarToggle} />
 
-            {/* PUBLIC ROUTE always available (no auth, no sidebar) */}
-            <Routes>
-                <Route path="/d/:fileId" element={<PublicDownload />} />
-            </Routes>
-
             {/* MAIN LAYOUT AREA (ensures footer placement is stable) */}
             <div className="main-layout">
                 {auth.isAuthenticated && sidebarVisible && <Sidebar />}
@@ -49,6 +44,7 @@ function App() {
                 <main className="main-content">
                     {auth.isAuthenticated ? (
                         <Routes>
+                            <Route path="/d/:fileId" element={<PublicDownload />} />
                             <Route path="/" element={<FilesDashboard />} />
                             <Route path="/settings" element={<Settings />} />
                             <Route
@@ -66,6 +62,7 @@ function App() {
                         <Routes>
                             <Route path="/" element={<HomePublic />} />
                             <Route path="/logout" element={<Logout />} />
+                            <Route path="/d/:fileId" element={<PublicDownload />} />
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     )}
