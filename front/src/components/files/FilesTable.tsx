@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 export type FileRow = {
     fileId: string;
     originalFileName?: string;
@@ -41,6 +43,12 @@ export default function FilesTable({ items, loading, selectedIds, onSelectionCha
         else onSelectionChange(items.map(i => i.fileId));
     }
 
+    const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+    function onRowClick(id: string) {
+        toggle(id);
+    }
+
     if (loading) {
         return <div className="placeholder">Nalagam...</div>;
     }
@@ -73,13 +81,41 @@ export default function FilesTable({ items, loading, selectedIds, onSelectionCha
             <tbody>
             {items.map((it) => {
                 const checked = selectedIds.includes(it.fileId);
+                const isHovered = hoveredId === it.fileId;
+                const isSelected = checked;
+
                 return (
-                    <tr key={it.fileId}>
+                    <tr
+                        key={it.fileId}
+                        onClick={() => onRowClick(it.fileId)}
+                        onMouseEnter={() => setHoveredId(it.fileId)}
+                        onMouseLeave={() => setHoveredId(null)}
+                        style={{
+                            background: isSelected ? '#eef3ff' : isHovered ? '#f5f5f5' : 'transparent',
+                            cursor: 'pointer',
+                        }}
+                    >
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>
-                            <input type="checkbox" checked={checked} onChange={() => toggle(it.fileId)} />
+                            <input
+                                type="checkbox"
+                                checked={checked}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={() => toggle(it.fileId)}
+                            />
                         </td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>
-                            {it.originalFileName ?? it.fileId}
+                            {(it.status ?? '').toLowerCase() === 'ready' ? (
+                                <a
+                                    href={`/d/${encodeURIComponent(it.fileId)}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {it.originalFileName ?? it.fileId}
+                                </a>
+                            ) : (
+                                <span>{it.originalFileName ?? it.fileId}</span>
+                            )}
                         </td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.status ?? ''}</td>
                         <td style={{ padding: '0.5rem', borderBottom: '1px solid #eee' }}>{it.sizeBytes ?? ''}</td>

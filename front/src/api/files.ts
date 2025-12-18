@@ -58,3 +58,20 @@ export async function putObjectToPresignedUrl(
         throw new Error(`S3 upload failed (${resp.status})`);
     }
 }
+
+export type PublicFileMeta = {
+    fileId: string;
+    originalFileName?: string;
+    contentType?: string;
+    sizeBytes?: number | null;
+    status?: string;
+    createdAt?: string;
+    expiresAt?: string | null;
+    passwordRequired?: boolean;
+};
+
+export async function getPublicFileMetadata(fileId: string): Promise<PublicFileMeta> {
+    return apiFetch<PublicFileMeta>(`/public/files/${encodeURIComponent(fileId)}`, {
+        method: 'GET',
+    });
+}
