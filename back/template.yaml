@@ -68,6 +68,37 @@ Resources:
         - Key: CostAllocation
           Value: !Ref CostAllocationTagValue
 
+  FilesBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: "riris-files-ru7btob1t3"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+              - HEAD
+            AllowedOrigins:
+              - "http://localhost:5173"
+              - !Sub "https://riris.dev.nothere.net"
+            ExposedHeaders:
+              - ETag
+              - x-amz-request-id
+              - x-amz-id-2
+            MaxAge: 3000
+      Tags:
+        - Key: CostAllocation
+          Value: !Ref CostAllocationTagValue
+
   RIRISApi:
     Type: AWS::Serverless::Api
     Properties:
