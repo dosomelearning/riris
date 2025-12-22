@@ -79,6 +79,15 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt S3ObjectCreatedFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: !Sub "${S3Prefix}/"
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders:
@@ -478,7 +487,8 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref S3ObjectCreatedFunction
       Principal: s3.amazonaws.com
-      SourceArn: !Sub "arn:aws:s3:::${FilesBucketName}"
+      SourceArn: !GetAtt FilesBucket.Arn
+      SourceAccount: !Ref AWS::AccountId
 
 Outputs:
   ApiBaseUrl:
