@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import PublicDownload from './pages/PublicDownload';
 import NotFound from './pages/NotFound';
 import Logout from './pages/Logout';
+import AuthCallback from './pages/AuthCallback';
 
 function App() {
     const auth = useAuth();
@@ -31,19 +32,20 @@ function App() {
         });
     };
 
+    // Keep gating; prevents flicker into logged-out routes while hydrating
     if (auth.isLoading) return null;
 
     return (
         <Router>
             <Header onSidebarToggle={handleSidebarToggle} />
 
-            {/* MAIN LAYOUT AREA (ensures footer placement is stable) */}
             <div className="main-layout">
                 {auth.isAuthenticated && sidebarVisible && <Sidebar />}
 
                 <main className="main-content">
                     {auth.isAuthenticated ? (
                         <Routes>
+                            <Route path="/auth/callback" element={<AuthCallback />} />
                             <Route path="/d/:fileId" element={<PublicDownload />} />
                             <Route path="/" element={<FilesDashboard />} />
                             <Route path="/settings" element={<Settings />} />
@@ -60,6 +62,7 @@ function App() {
                         </Routes>
                     ) : (
                         <Routes>
+                            <Route path="/auth/callback" element={<AuthCallback />} />
                             <Route path="/" element={<HomePublic />} />
                             <Route path="/logout" element={<Logout />} />
                             <Route path="/d/:fileId" element={<PublicDownload />} />
