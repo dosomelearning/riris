@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import Modal from '../modals/Modal';
 import { initUpload, putObjectToPresignedUrl } from '../../api/files';
@@ -18,8 +18,19 @@ export default function UploadModal({ open, onClose, onUploadBegin, onUploadFini
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
+    // Reset transient modal state on open so each upload starts clean.
+    useEffect(() => {
+        if (!open) return;
+
+        setFile(null);
+        setError(null);
+        setSubmitting(false);
+        // Intentionally keep expiresInDays as-is to preserve user preference across uploads.
+    }, [open]);
+
     async function onUpload() {
         if (!auth.user?.id_token) return;
+
         if (!file) {
             setError('Izberi datoteko.');
             return;
@@ -46,6 +57,8 @@ export default function UploadModal({ open, onClose, onUploadBegin, onUploadFini
             const msg = e instanceof Error ? e.message : 'Nalaganje ni uspelo';
             setError(msg);
             onUploadFinished({ ok: false, error: msg });
+        } finally {
+            // Ensure buttons are re-enabled after any attempt (success or failure).
             setSubmitting(false);
         }
     }
@@ -53,10 +66,7 @@ export default function UploadModal({ open, onClose, onUploadBegin, onUploadFini
     return (
         <Modal open={open} title="Naloži novo" onClose={onClose}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <input
-                    type="file"
-                    onChange={e => setFile(e.target.files?.[0] ?? null)}
-                />
+                <input type="file" onChange={e => setFile(e.target.files?.[0] ?? null)} />
 
                 <label>
                     Veljavnost (dni):
