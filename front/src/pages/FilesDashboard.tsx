@@ -24,13 +24,26 @@ export default function FilesDashboard() {
 
     const selectedCount = selectedIds.length;
     const [showDeleted, setShowDeleted] = useState(false);
+
     const visibleItems = useMemo(() => {
-        return showDeleted ? items : items.filter(i => i.status !== 'deleted');
+        const filtered = showDeleted ? items : items.filter(i => i.status !== 'deleted');
+
+        // Always sort newest-first by createdAt. Items with missing/invalid createdAt go to the bottom.
+        return filtered
+            .slice()
+            .sort((a, b) => {
+                const ta = Date.parse(a.createdAt ?? '');
+                const tb = Date.parse(b.createdAt ?? '');
+                const va = Number.isFinite(ta) ? ta : -Infinity;
+                const vb = Number.isFinite(tb) ? tb : -Infinity;
+                return vb - va; // descending
+            });
     }, [items, showDeleted]);
+
     const selectedSingle = useMemo(() => {
         if (selectedIds.length !== 1) return null;
         return visibleItems.find(i => i.fileId === selectedIds[0]) ?? null;
-    }, [items, selectedIds]);
+    }, [visibleItems, selectedIds]);
 
     const [uploadDone, setUploadDone] = useState(false);
     const [uploadErr, setUploadErr] = useState<string | null>(null);
